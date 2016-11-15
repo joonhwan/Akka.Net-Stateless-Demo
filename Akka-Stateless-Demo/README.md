@@ -3,9 +3,9 @@
 POC project for using Stateless with Akka.net
 
 New ```StatelessHsmActor<T>``` actor class has been implemented where ```ReceiveActor``` and ```MessageBasedStateMachine<T>```
-(that is wrapper of ```Statless.StateMachine```)
+(that is wrapper of ```Statless.StateMachine```) 
 
-```MessageBasedStateMachine<T>`` in particular itself enable ```Stateless.StateMachine``` to handle specific *typed* message object as trigger(Originally, *Stateless* uses Enum'd value)
+In particular, ```MessageBasedStateMachine<T>``` itself enable ```Stateless.StateMachine``` to handle specific *typed* message object as trigger(Originally, *Stateless* uses Enum'd value)
 
 
 Sample code follows. 
