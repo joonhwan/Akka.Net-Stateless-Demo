@@ -67,12 +67,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Actors\JobProcessingActor.cs" />
+    <Compile Include="Messages\RunningStateProbeRequest.cs" />
+    <Compile Include="Messages\UnknownRequest.cs" />
+    <Compile Include="Msm\TriggerShooter.cs" />
+    <Compile Include="Msm\TriggerShooterLocator.cs" />
     <Compile Include="Msm\StatelessHsmActor.cs" />
     <Compile Include="Messages\StartRequest.cs" />
     <Compile Include="Messages\StopRequest.cs" />
     <Compile Include="Msm\MessageBasedStateConfiguration.cs" />
     <Compile Include="Msm\MessageBasedStateMachine.cs" />
-    <Compile Include="Msm\MessageLocator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

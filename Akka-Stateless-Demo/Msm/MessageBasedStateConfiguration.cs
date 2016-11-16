@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Stateless;
 
 namespace Akka_Stateless_Demo.Msm
@@ -6,11 +7,14 @@ namespace Akka_Stateless_Demo.Msm
     public class MessageBasedStateConfiguration<TState>
     {
         private readonly StateMachine<TState, Type>.StateConfiguration _internalConfigurator;
-        private readonly MessageLocator _messageLocator;
+        private readonly TriggerShooterLocator<TState> _triggerShooterLocator;
 
-        public MessageBasedStateConfiguration(MessageLocator messageLocator, StateMachine<TState, Type>.StateConfiguration internalConfigurator)
+        public MessageBasedStateConfiguration(
+            TriggerShooterLocator<TState> triggerShooterLocator, 
+            StateMachine<TState, Type>.StateConfiguration internalConfigurator
+            )
         {
-            _messageLocator = messageLocator;
+            _triggerShooterLocator = triggerShooterLocator;
             _internalConfigurator = internalConfigurator;
         }
 
@@ -31,54 +35,25 @@ namespace Akka_Stateless_Demo.Msm
             _internalConfigurator.SubstateOf(superState);
             return this;
         }
-
+        
         public MessageBasedStateConfiguration<TState> OnReceive<T>(Func<T, TState> handler)
         {
-            _internalConfigurator.PermitDynamicIf(typeof(T), () => HandleMessage(handler), () => CanHandle(handler), null);
+            var shooter = _triggerShooterLocator.AddOrGet<T>();
+            _internalConfigurator.PermitDynamic(shooter.Trigger, handler);
             return this;
         }
 
         public MessageBasedStateConfiguration<TState> OnReceive<T>(Action<T> handler)
         {
-            _internalConfigurator.IgnoreIf(typeof(T), () =>
-            {
-                HandleMessage(handler);
-                return true; // no - transition.
-            });
+            var shooter = _triggerShooterLocator.AddOrGet<T>();
+            _internalConfigurator.InternalTransition(shooter.Trigger, (arg, _) => handler(arg));
             return this;
         }
 
         public void OnReceiveAny(Action<object> handler)
         {
             // no idea yet
-            throw new NotImplementedException();
+            //_internalConfigurator.Machine.OnUnhandledTrigger((state, type) => ??? );
         }
-
-        private bool CanHandle<T>(Func<T, TState> handler)
-        {
-            T message;
-            return _messageLocator.TryGet(out message);
-        }
-
-        private TState HandleMessage<T>(Func<T, TState> handler)
-        {
-            T message;
-            if (!_messageLocator.TryGet(out message))
-            {
-                throw new InvalidOperationException("Message Type Mismatched!");
-            }
-            return handler(message);
-        }
-
-        private void HandleMessage<T>(Action<T> handler)
-        {
-            T message;
-            if (!_messageLocator.TryGet(out message))
-            {
-                throw new InvalidOperationException("Message Type Mismatched!");
-            }
-            handler(message);
-        }
-
     }
 }

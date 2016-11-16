@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Stateless;
 
 namespace Akka_Stateless_Demo.Msm
@@ -11,22 +13,27 @@ namespace Akka_Stateless_Demo.Msm
     public class MessageBasedStateMachine<TState> : ICanHandle
     {
         private StateMachine<TState, Type> _stateMachine;
-        private MessageLocator _messageLocator;
+        private TriggerShooterLocator<TState> _triggerShooterLocator;
 
         public MessageBasedStateMachine(TState initialState)
         {
-            _messageLocator = new MessageLocator();
-
             _stateMachine = new StateMachine<TState, Type>(initialState);
+            _triggerShooterLocator = new TriggerShooterLocator<TState>(_stateMachine);
+
             _stateMachine.OnTransitioned(transition =>
             {
-                OnTransition(transition.Source, transition.Destination, transition.IsReentry, _messageLocator.LastMessage);
+                Transitioned?.Invoke(new TransitionInfo<TState>(transition.Source, transition.Destination, transition.IsReentry, LastMessage));
             });
             _stateMachine.OnUnhandledTrigger((state, type) =>
             {
-                OnUnhandledTrigger(state, _messageLocator.LastMessage);
+                Unhandled?.Invoke(state, LastMessage);
             });
         }
+
+        public object LastMessage { get; set; }
+
+        public Action<TransitionInfo<TState>> Transitioned;
+        public Action<TState, object> Unhandled;
 
         public MessageBasedStateMachine(Func<TState> stateAccessor, Action<TState> stateMutator)
         {
@@ -36,23 +43,27 @@ namespace Akka_Stateless_Demo.Msm
         public MessageBasedStateConfiguration<TState> Configure(TState state)
         {
             var internalConfigurator = _stateMachine.Configure(state);
-            return new MessageBasedStateConfiguration<TState>(_messageLocator, internalConfigurator);
+            return new MessageBasedStateConfiguration<TState>(_triggerShooterLocator, internalConfigurator);
         }
 
         public void Handle(object message)
         {
-            try
+            var shooter = _triggerShooterLocator.Get(message.GetType());
+            if (shooter != null)
             {
-                // message body 를 remember
-                _messageLocator.Set(message);
-
-                // meessage type 에 의거하여 sm이 동작.
-                _stateMachine.Fire(message.GetType());
+                try
+                {
+                    LastMessage = message;
+                    shooter.Fire(_stateMachine, message);
+                }
+                finally
+                {
+                    LastMessage = null;
+                }
             }
-            finally
+            else
             {
-                // meesage body 를 forget
-                _messageLocator.Unset();
+                Unhandled?.Invoke(_stateMachine.State, message);
             }
         }
 
@@ -71,12 +82,30 @@ namespace Akka_Stateless_Demo.Msm
             return _stateMachine.ToDotGraph();
         }
 
-        protected virtual void OnTransition(TState source, TState destination, bool isReentry, object message)
+        protected virtual void OnUnhandledTrigger(TState state, object message)
         {
         }
 
-        protected virtual void OnUnhandledTrigger(TState state, object message)
+    }
+
+    public class TransitionInfo<TState>
+    {
+        public TransitionInfo(TState source, TState destination, bool isReentry, object lastMessage)
         {
+            Source = source;
+            Destination = destination;
+            IsReentry = isReentry;
+            LastMessage = lastMessage;
+        }
+
+        public TState Source { get; private set; }
+        public TState Destination { get; private set; }
+        public bool IsReentry { get; private set; }
+        public object LastMessage { get; private set; }
+
+        public override string ToString()
+        {
+            return $"Source: {Source}, Destination: {Destination}, IsReentry: {IsReentry}, LastMessage: {LastMessage}";
         }
     }
 }

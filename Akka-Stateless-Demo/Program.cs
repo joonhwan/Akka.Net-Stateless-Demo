@@ -19,10 +19,13 @@ namespace Akka_Stateless_Demo
             
             Console.WriteLine("actor system is running....Ctrl-C to exit.");
 
-            actor.Tell(new StartRequest());
-            actor.Tell(new StartRequest());
-            actor.Tell(new StopRequest());
-            actor.Tell(new StopRequest());
+            actor.Tell(new StartRequest("System1"));
+            actor.Tell(new RunningStateProbeRequest());
+            actor.Tell(new StartRequest("System2"));
+            actor.Tell(new StopRequest("System3"));
+            actor.Tell(new RunningStateProbeRequest());
+            actor.Tell(new StopRequest("System4"));
+            actor.Tell(new UnknownRequest());
             
             Console.CancelKeyPress += (sender, eventArgs) => {
                 Console.WriteLine("Terminating...");
